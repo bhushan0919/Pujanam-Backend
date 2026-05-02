@@ -66,14 +66,13 @@ const server = http.createServer(app);
 // ================= SOCKET.IO =================
 const io = socketIo(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production'
-      ? [process.env.FRONTEND_URL]
-      : ['http://localhost:5173', 'http://localhost:3000'],
+    origin: ['http://localhost:5173', 'http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST']
   },
+  // ✅ Add these options
   transports: ['websocket', 'polling'],
-  allowEIO3: true,
+  allowEIO3: true,  // Allow Engine.IO v3 clients
   pingTimeout: 60000,
   pingInterval: 25000
 });
@@ -159,20 +158,19 @@ app.use((req, res, next) => {
 app.use(logger);
 
 // ================= STATIC FILES =================
-// Serve static files with proper security headers
-const serveStaticOptions = {
-  setHeaders: (res, path, stat) => {
-    if (process.env.NODE_ENV === 'production') {
-      // Only allow from your frontend domain
-      res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL);
-    }
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+app.use('/uploads/services', express.static(path.join(__dirname, 'uploads/services'), {
+  setHeaders: (res) => {
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
   }
-};
-
-app.use('/uploads/services', express.static(path.join(__dirname, 'uploads/services'), serveStaticOptions));
-app.use('/uploads/pandits', express.static(path.join(__dirname, 'uploads/pandits'), serveStaticOptions));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), serveStaticOptions));
+}));
+app.use('/uploads/pandits', express.static(path.join(__dirname, 'uploads/pandits'), {
+  setHeaders: (res) => {
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+  }
+}));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ================= DATABASE =================
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/pujanam', {
@@ -232,7 +230,7 @@ app.get('/api/health/detailed', (req, res) => {
     health.responseTime = Date.now() - health.responseTime;
 
     if (health.responseTime > 1000) {
-      console.log(`⚠️ Slow database ping: ${health.responseTime}ms`);
+      //console.log(`⚠️ Slow database ping: ${health.responseTime}ms`);
     }
 
     res.json(health);
