@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const createCompleteBooking = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/pujanam');
-    //console.log('✅ Connected to MongoDB');
+    console.log('✅ Connected to MongoDB');
     
     const Booking = require('../models/Booking');
     const Service = require('../models/Service');
@@ -15,27 +15,27 @@ const createCompleteBooking = async () => {
     // Get a service
     const service = await Service.findOne();
     if (!service) {
-      //console.log('❌ No service found. Please run seedData.js first');
+      console.log('❌ No service found. Please run seedData.js first');
       process.exit(1);
     }
     
     // Get a pandit
     const pandit = await Pandit.findOne();
     if (!pandit) {
-      //console.log('❌ No pandit found. Please run seedData.js first');
+      console.log('❌ No pandit found. Please run seedData.js first');
       process.exit(1);
     }
     
-    //console.log('📋 Using Service:', service.name);
-    //console.log('📋 Using Pandit:', pandit.name);
+    console.log('📋 Using Service:', service.name);
+    console.log('📋 Using Pandit:', pandit.name);
     
     // Delete old incomplete bookings
     await Booking.deleteMany({ name: { $in: [null, '', 'Customer'] } });
-    //console.log('🧹 Cleaned up incomplete bookings');
+    console.log('🧹 Cleaned up incomplete bookings');
     
     // Delete old notifications
     await Notification.deleteMany({});
-    //console.log('🧹 Cleaned up old notifications');
+    console.log('🧹 Cleaned up old notifications');
     
     // Create a COMPLETE booking with all data
     const completeBooking = new Booking({
@@ -54,15 +54,15 @@ const createCompleteBooking = async () => {
     });
     
     await completeBooking.save();
-    //console.log('\n✅ COMPLETE BOOKING CREATED:');
-    //console.log('   Booking ID:', completeBooking._id);
-    //console.log('   Customer Name:', completeBooking.name);
-    //console.log('   Contact:', completeBooking.contact);
-    //console.log('   Email:', completeBooking.email);
-    //console.log('   Address:', completeBooking.address);
-    //console.log('   Message:', completeBooking.message);
-    //console.log('   Service:', service.name);
-    //console.log('   Price:', service.price);
+    console.log('\n✅ COMPLETE BOOKING CREATED:');
+    console.log('   Booking ID:', completeBooking._id);
+    console.log('   Customer Name:', completeBooking.name);
+    console.log('   Contact:', completeBooking.contact);
+    console.log('   Email:', completeBooking.email);
+    console.log('   Address:', completeBooking.address);
+    console.log('   Message:', completeBooking.message);
+    console.log('   Service:', service.name);
+    console.log('   Price:', service.price);
     
     // Create notification for pandit
     const notification = new Notification({
@@ -74,15 +74,15 @@ const createCompleteBooking = async () => {
     });
     
     await notification.save();
-    //console.log('\n✅ NOTIFICATION CREATED:');
-    //console.log('   Notification ID:', notification._id);
-    //console.log('   Pandit:', pandit.name);
-    //console.log('   Message:', notification.message);
+    console.log('\n✅ NOTIFICATION CREATED:');
+    console.log('   Notification ID:', notification._id);
+    console.log('   Pandit:', pandit.name);
+    console.log('   Message:', notification.message);
     
-    //console.log('\n🎉 SUCCESS! Now login as pandit to see the complete notification.');
-    //console.log('\n📝 Pandit Login:');
-    //console.log(`   Username: ${pandit.username}`);
-    //console.log('   Password: pandit123');
+    console.log('\n🎉 SUCCESS! Now login as pandit to see the complete notification.');
+    console.log('\n📝 Pandit Login:');
+    console.log(`   Username: ${pandit.username}`);
+    console.log('   Password: pandit123');
     
     process.exit(0);
   } catch (error) {

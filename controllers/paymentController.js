@@ -14,7 +14,7 @@ try {
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET
   });
-  //console.log('✅ Razorpay initialized successfully');
+  console.log('✅ Razorpay initialized successfully');
 } catch (error) {
   console.error('❌ Razorpay initialization failed:', error.message);
 }
@@ -60,9 +60,9 @@ exports.createOrder = async (req, res) => {
 
     const advanceAmount = calculateAdvance(totalAmount);
 
-    //console.log(`Booking ID: ${bookingId}`);
-    //console.log(`Total Amount: ₹${totalAmount}`);
-    //console.log(`Advance Amount (30%): ₹${advanceAmount}`);
+    console.log(`Booking ID: ${bookingId}`);
+    console.log(`Total Amount: ₹${totalAmount}`);
+    console.log(`Advance Amount (30%): ₹${advanceAmount}`);
 
     const options = {
       amount: advanceAmount * 100, // Convert to paise
@@ -78,7 +78,7 @@ exports.createOrder = async (req, res) => {
     };
 
     const order = await razorpay.orders.create(options);
-    //console.log('✅ Razorpay order created:', order.id);
+    console.log('✅ Razorpay order created:', order.id);
 
     // Update booking with order ID
     await Booking.findByIdAndUpdate(bookingId, {
@@ -129,8 +129,8 @@ exports.verifyPayment = async (req, res) => {
       .update(body.toString())
       .digest('hex');
 
-    //console.log(`Expected: ${expectedSignature}`);
-    //console.log(`Received: ${signature}`);
+    console.log(`Expected: ${expectedSignature}`);
+    console.log(`Received: ${signature}`);
 
     if (expectedSignature !== signature) {
       console.error('❌ Invalid payment signature');
@@ -146,7 +146,7 @@ exports.verifyPayment = async (req, res) => {
       advanceAmount: advanceAmount
     });
 
-    //console.log('✅ Payment verified for booking:', bookingId);
+    console.log('✅ Payment verified for booking:', bookingId);
 
     res.json({ success: true, message: 'Payment verified successfully' });
 
@@ -159,7 +159,7 @@ exports.verifyPayment = async (req, res) => {
 // Process Refund (internal helper)
 exports.processRefund = async (bookingId, refundPercentage = 100) => {
   try {
-    //console.log(`Processing refund for booking: ${bookingId}, ${refundPercentage}%`);
+    console.log(`Processing refund for booking: ${bookingId}, ${refundPercentage}%`);
 
     const booking = await Booking.findById(bookingId);
 
@@ -191,7 +191,7 @@ exports.processRefund = async (bookingId, refundPercentage = 100) => {
       paymentStatus: refundPercentage === 100 ? 'refunded' : 'partially_refunded'
     });
 
-    //console.log('✅ Refund processed:', refund.id);
+    console.log('✅ Refund processed:', refund.id);
     return { success: true, refund };
 
   } catch (error) {

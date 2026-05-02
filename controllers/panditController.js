@@ -78,7 +78,7 @@ exports.getFilterOptions = async (req, res) => {
 // Get unique locations from pandits
 exports.getPanditLocations = async (req, res) => {
   try {
-    //console.log('📍 Fetching unique pandit locations...');
+    console.log('📍 Fetching unique pandit locations...');
     
     // Check if Pandit model exists and has data
     const Pandit = require('../models/Pandit');
@@ -86,7 +86,7 @@ exports.getPanditLocations = async (req, res) => {
     // Get all distinct locations
     const locations = await Pandit.distinct('location');
     
-    //console.log('Raw locations from DB:', locations);
+    console.log('Raw locations from DB:', locations);
     
     // Filter out empty, null, undefined values
     const validLocations = locations.filter(loc => {
@@ -96,7 +96,7 @@ exports.getPanditLocations = async (req, res) => {
     // Sort alphabetically
     validLocations.sort();
     
-    //console.log('Valid locations to return:', validLocations);
+    console.log('Valid locations to return:', validLocations);
     
     res.json({
       success: true,
@@ -149,7 +149,7 @@ exports.createPandit = async (req, res) => {
     const pandit = new Pandit(panditData);
     await pandit.save();
     
-    //console.log(`✅ Pandit created with image: ${pandit.image}`);
+    console.log(`✅ Pandit created with image: ${pandit.image}`);
     
     res.status(201).json(pandit);
   } catch (error) {
@@ -164,10 +164,10 @@ exports.createPandit = async (req, res) => {
 // Update pandit with image upload
 exports.updatePandit = async (req, res) => {
   try {
-    //console.log('📝 Update pandit request received');
-    //console.log('   Params ID:', req.params.id);
-    //console.log('   Body:', req.body);
-    //console.log('   File:', req.file ? req.file.filename : 'No file');
+    console.log('📝 Update pandit request received');
+    console.log('   Params ID:', req.params.id);
+    console.log('   Body:', req.body);
+    console.log('   File:', req.file ? req.file.filename : 'No file');
     
     const pandit = await Pandit.findById(req.params.id);
     if (!pandit) {
@@ -192,7 +192,7 @@ exports.updatePandit = async (req, res) => {
       try {
         updateData.services = JSON.parse(updateData.services);
       } catch (e) {
-        //console.log('Services parsing error:', e);
+        console.log('Services parsing error:', e);
       }
     }
     
@@ -200,7 +200,7 @@ exports.updatePandit = async (req, res) => {
       try {
         updateData.languages = JSON.parse(updateData.languages);
       } catch (e) {
-        //console.log('Languages parsing error:', e);
+        console.log('Languages parsing error:', e);
       }
     }
 
@@ -213,14 +213,14 @@ exports.updatePandit = async (req, res) => {
       // This is the default placeholder, don't update if pandit already has password
       if (!pandit.password || pandit.password === 'pandit123') {
         // Only set if it's actually new
-        //console.log('Using default password for new pandit');
+        console.log('Using default password for new pandit');
       } else {
         // Don't override existing password with placeholder
         delete updateData.password;
       }
     }
 
-    //console.log('📦 Final update data:', updateData);
+    console.log('📦 Final update data:', updateData);
 
     const updatedPandit = await Pandit.findByIdAndUpdate(
       req.params.id,
@@ -234,11 +234,11 @@ exports.updatePandit = async (req, res) => {
       const oldImagePath = path.join('uploads', 'pandits', oldFilename);
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
-        //console.log(`🗑️ Deleted old pandit image: ${oldFilename}`);
+        console.log(`🗑️ Deleted old pandit image: ${oldFilename}`);
       }
     }
 
-    //console.log(`✅ Pandit updated: ${updatedPandit.name}`);
+    console.log(`✅ Pandit updated: ${updatedPandit.name}`);
     
     res.json({
       success: true,
@@ -279,7 +279,7 @@ exports.deletePandit = async (req, res) => {
       const imagePath = path.join('uploads', 'pandits', filename);
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
-        //console.log(`🗑️ Deleted pandit image: ${filename}`);
+        console.log(`🗑️ Deleted pandit image: ${filename}`);
       }
     }
 

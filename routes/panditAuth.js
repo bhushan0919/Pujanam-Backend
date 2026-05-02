@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
-  //console.log('🔐 Pandit login attempt for:', username);
+  console.log('🔐 Pandit login attempt for:', username);
 
   try {
     if (!username || !password) {
@@ -23,19 +23,19 @@ router.post('/login', async (req, res) => {
 
     
     if (!pandit) {
-      //console.log('❌ Pandit not found:', username);
+      console.log('❌ Pandit not found:', username);
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid username or password' 
       });
     }
 
-    //console.log('✅ Pandit found:', pandit.name);
-    //console.log('   Stored hash exists:', !!pandit.password);
+    console.log('✅ Pandit found:', pandit.name);
+    console.log('   Stored hash exists:', !!pandit.password);
 
     // Check password
     const isMatch = await bcrypt.compare(password, pandit.password);
-    //console.log('   Password match:', isMatch);
+    console.log('   Password match:', isMatch);
 
     if (!isMatch) {
       return res.status(401).json({ 

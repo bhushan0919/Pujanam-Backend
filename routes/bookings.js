@@ -29,7 +29,7 @@ router.post('/', validateBooking, (req, res, next) => {
       }
     } catch (err) {
       // Token invalid/expired — continue as guest
-      //console.log('⚠️ Optional auth failed, proceeding as guest:', err.message);
+      console.log('⚠️ Optional auth failed, proceeding as guest:', err.message);
     }
   }
   next();

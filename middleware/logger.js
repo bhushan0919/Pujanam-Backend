@@ -1,6 +1,6 @@
 // backend/middleware/logger.js - CREATE NEW
 const logger = (req, res, next) => {
-  //console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
   next();
 };
 

@@ -49,7 +49,7 @@ exports.authenticateCustomer = async (req, res, next) => {
       role: 'customer'
     };
     
-    //console.log(`✅ Customer authenticated: ${customer.email} (Phone: ${customer.phone})`);
+    console.log(`✅ Customer authenticated: ${customer.email} (Phone: ${customer.phone})`);
     next();
     
   } catch (error) {
@@ -118,7 +118,7 @@ exports.authenticatePandit = async (req, res, next) => {
       panditId: pandit._id
     };
     
-    //console.log(`✅ Pandit authenticated: ${pandit.name}`);
+    console.log(`✅ Pandit authenticated: ${pandit.name}`);
     next();
     
   } catch (error) {
@@ -167,7 +167,7 @@ exports.authenticateAdmin = async (req, res, next) => {
     }
     
     req.user = decoded;
-    //console.log(`✅ Admin authenticated: ${decoded.email}`);
+    console.log(`✅ Admin authenticated: ${decoded.email}`);
     next();
     
   } catch (error) {

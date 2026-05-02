@@ -24,10 +24,10 @@ const extractLocationFromAddress = (address) => {
 
 exports.createBooking = async (req, res, next) => {
   try {
-    //console.log('='.repeat(50));
-    //console.log('📝 NEW BOOKING REQUEST RECEIVED');
-    //console.log('Request body:', JSON.stringify(req.body, null, 2));
-    //console.log('='.repeat(50));
+    console.log('='.repeat(50));
+    console.log('📝 NEW BOOKING REQUEST RECEIVED');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('='.repeat(50));
 
     const {
       name, contact, email, serviceId, panditId, dateTime, address, message, price, userLocation
@@ -65,7 +65,7 @@ exports.createBooking = async (req, res, next) => {
     if (!finalUserLocation) {
       finalUserLocation = extractLocationFromAddress(address);
     }
-    //console.log('📍 Extracted location:', finalUserLocation);
+    console.log('📍 Extracted location:', finalUserLocation);
 
     // Calculate actual numeric price
     let actualPrice = 0;
@@ -95,7 +95,7 @@ exports.createBooking = async (req, res, next) => {
     });
 
     await booking.save();
-    //console.log('✅ Booking saved:', booking._id);
+    console.log('✅ Booking saved:', booking._id);
 
     // If specific pandit is selected, send notification ONLY to that pandit
     if (panditId) {
@@ -138,12 +138,12 @@ exports.createBooking = async (req, res, next) => {
 
     // If only service is selected (no pandit), find suitable pandits
     if (serviceId && !panditId) {
-      //console.log('🔍 Starting pandit search process...');
+      console.log('🔍 Starting pandit search process...');
 
       const suitablePandits = await NotificationService.findSuitablePandits(booking);
 
       if (suitablePandits.length > 0) {
-        //console.log(`📢 Found ${suitablePandits.length} suitable pandits, sending notifications...`);
+        console.log(`📢 Found ${suitablePandits.length} suitable pandits, sending notifications...`);
         await NotificationService.notifyPandits(booking, suitablePandits);
 
         booking.status = 'notified';
@@ -156,7 +156,7 @@ exports.createBooking = async (req, res, next) => {
           panditsNotified: suitablePandits.length
         });
       } else {
-        //console.log('⚠️ No suitable pandits found');
+        console.log('⚠️ No suitable pandits found');
         return res.status(201).json({
           success: true,
           booking,
@@ -295,7 +295,7 @@ exports.acceptBooking = async (req, res, next) => {
 
     // Delete all notifications for this booking
     const deletedNotifications = await Notification.deleteMany({ bookingId: booking._id });
-    //console.log(`🗑️ Deleted ${deletedNotifications.deletedCount} notifications for booking ${booking._id}`);
+    console.log(`🗑️ Deleted ${deletedNotifications.deletedCount} notifications for booking ${booking._id}`);
 
     // Get pandit details
     const pandit = await Pandit.findById(panditId);
@@ -324,7 +324,7 @@ exports.acceptBooking = async (req, res, next) => {
         }
       });
 
-      //console.log(`📡 Emitted remove_notification to ${notifiedPandits.length - 1} other pandits`);
+      console.log(`📡 Emitted remove_notification to ${notifiedPandits.length - 1} other pandits`);
     }
 
     // Send email confirmation
@@ -424,5 +424,5 @@ exports.notifyAdminBookingAccepted = async (booking, panditId) => {
   const pandit = await Pandit.findById(panditId);
   const service = await Service.findById(booking.serviceId);
 
-  //console.log(`📢 Booking Accepted: ${service.name} by ${pandit.name} for ${booking.name}`);
+  console.log(`📢 Booking Accepted: ${service.name} by ${pandit.name} for ${booking.name}`);
 };

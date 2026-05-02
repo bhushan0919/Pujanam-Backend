@@ -84,7 +84,7 @@ exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    //console.log('🔐 Admin login attempt for:', email);
+    console.log('🔐 Admin login attempt for:', email);
     
     if (!email || !password) {
       return res.status(400).json({
@@ -97,7 +97,7 @@ exports.adminLogin = async (req, res) => {
     const user = await User.findOne({ email });
     
     if (!user) {
-      //console.log('❌ User not found:', email);
+      console.log('❌ User not found:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -106,7 +106,7 @@ exports.adminLogin = async (req, res) => {
 
     // Check if user is admin
     if (user.role !== 'admin') {
-      //console.log('❌ User is not admin:', user.role);
+      console.log('❌ User is not admin:', user.role);
       return res.status(403).json({
         success: false,
         message: 'Admin access required'
@@ -115,10 +115,10 @@ exports.adminLogin = async (req, res) => {
 
     // Check password
     const isPasswordValid = await user.comparePassword(password);
-    //console.log('🔑 Password validation result:', isPasswordValid);
+    console.log('🔑 Password validation result:', isPasswordValid);
 
     if (!isPasswordValid) {
-      //console.log('❌ Invalid password for:', email);
+      console.log('❌ Invalid password for:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -138,7 +138,7 @@ exports.adminLogin = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    //console.log('✅ Login successful for:', user.email);
+    console.log('✅ Login successful for:', user.email);
 
     res.json({
       success: true,
@@ -222,8 +222,8 @@ exports.toggleServiceActivity = async (req, res) => {
 // Get all bookings with pandit details
 exports.getAllBookings = async (req, res) => {
   try {
-    //console.log('📡 Admin getAllBookings called');
-    //console.log('   User:', req.user?.email);
+    console.log('📡 Admin getAllBookings called');
+    console.log('   User:', req.user?.email);
     
     const { status, panditId, fromDate, toDate, page = 1, limit = 50 } = req.query;
     

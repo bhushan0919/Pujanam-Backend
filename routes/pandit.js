@@ -17,7 +17,7 @@ router.use(authenticatePandit);
 // Dashboard
 router.get('/dashboard', async (req, res) => {
   try {
-    //console.log('📊 Dashboard request from pandit:', req.user.id);
+    console.log('📊 Dashboard request from pandit:', req.user.id);
     const Pandit = require('../models/Pandit');
     const Booking = require('../models/Booking');
     
@@ -101,7 +101,7 @@ router.patch('/availability', async (req, res) => {
 router.get('/notifications', async (req, res) => {
   try {
     const panditId = req.user.id;
-    //console.log('📨 Fetching notifications for pandit:', panditId);
+    console.log('📨 Fetching notifications for pandit:', panditId);
     
     const Notification = require('../models/Notification');
     const Booking = require('../models/Booking');
@@ -115,7 +115,7 @@ router.get('/notifications', async (req, res) => {
     .sort({ createdAt: -1 })
     .lean();
     
-    //console.log(`📊 Found ${notifications.length} notifications`);
+    console.log(`📊 Found ${notifications.length} notifications`);
     
     if (notifications.length === 0) {
       return res.json({ success: true, notifications: [] });
@@ -131,7 +131,7 @@ router.get('/notifications', async (req, res) => {
     .populate('serviceId', 'name price duration category')
     .lean();
     
-    //console.log(`📊 Found ${bookings.length} bookings`);
+    console.log(`📊 Found ${bookings.length} bookings`);
     
     // Create a map for quick lookup
     const bookingMap = {};
@@ -145,7 +145,7 @@ router.get('/notifications', async (req, res) => {
       
       // If booking doesn't exist, create a placeholder
       if (!booking) {
-        //console.log(`⚠️ Booking not found for notification ${notification._id}`);
+        console.log(`⚠️ Booking not found for notification ${notification._id}`);
         return {
           _id: notification._id,
           notificationId: notification._id,
@@ -192,7 +192,7 @@ router.get('/notifications', async (req, res) => {
       };
     });
     
-    //console.log(`✅ Returning ${formattedNotifications.length} formatted notifications`);
+    console.log(`✅ Returning ${formattedNotifications.length} formatted notifications`);
     
     res.json({
       success: true,
@@ -313,7 +313,7 @@ router.get('/dashboard-stats', async (req, res) => {
   try {
     const panditId = req.user.id;
 
-    //console.log('📊 Fetching dashboard stats for pandit:', panditId);
+    console.log('📊 Fetching dashboard stats for pandit:', panditId);
 
     // Get today's date range
     const today = new Date();
@@ -539,7 +539,7 @@ router.patch('/bookings/:bookingId/complete', async (req, res) => {
     booking.status = 'completed';
     await booking.save();
     
-    //console.log(`✅ Booking ${bookingId} marked as completed by pandit ${panditId}`);
+    console.log(`✅ Booking ${bookingId} marked as completed by pandit ${panditId}`);
     
     res.json({ 
       success: true, 
@@ -665,7 +665,7 @@ router.post('/bookings/:bookingId/generate-code', async (req, res) => {
     
     await booking.save();
     
-    //console.log(`✅ Code ${verificationCode} generated for booking ${bookingId}`);
+    console.log(`✅ Code ${verificationCode} generated for booking ${bookingId}`);
     
     res.json({
       success: true,
@@ -748,7 +748,7 @@ router.post('/bookings/:bookingId/verify-code', async (req, res) => {
     
     await booking.save();
     
-    //console.log(`✅ Booking ${bookingId} completed with code verification`);
+    console.log(`✅ Booking ${bookingId} completed with code verification`);
     
     res.json({
       success: true,
@@ -814,7 +814,7 @@ router.get('/bookings/:bookingId/code-status', async (req, res) => {
 router.get('/debug/booking/:bookingId', async (req, res) => {
   try {
     const { bookingId } = req.params;
-    //console.log('🔍 Debugging booking:', bookingId);
+    console.log('🔍 Debugging booking:', bookingId);
     
     const Booking = require('../models/Booking');
     
@@ -824,7 +824,7 @@ router.get('/debug/booking/:bookingId', async (req, res) => {
       .lean();
     
     if (!booking) {
-      //console.log('❌ Booking not found in database!');
+      console.log('❌ Booking not found in database!');
       return res.json({
         exists: false,
         message: 'Booking not found',
@@ -876,7 +876,7 @@ router.get('/online-status', authenticatePandit, async (req, res) => {
     if (isOnline && hoursSinceLastActivity >= 12) {
       isOnline = false;
       await Pandit.findByIdAndUpdate(panditId, { isOnline: false });
-      //console.log(`🕐 Pandit ${panditId} auto-offline after 12 hours inactivity`);
+      console.log(`🕐 Pandit ${panditId} auto-offline after 12 hours inactivity`);
     }
     
     res.json({ 

@@ -45,7 +45,7 @@ exports.createService = async (req, res) => {
     const service = new Service(serviceData);
     await service.save();
     
-    //console.log(`✅ Service created with image: ${service.image}`);
+    console.log(`✅ Service created with image: ${service.image}`);
     
     res.status(201).json(service);
   } catch (error) {
@@ -90,11 +90,11 @@ exports.updateService = async (req, res) => {
       const oldImagePath = path.join('uploads', 'services', oldFilename);
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
-        //console.log(`🗑️ Deleted old service image: ${oldFilename}`);
+        console.log(`🗑️ Deleted old service image: ${oldFilename}`);
       }
     }
 
-    //console.log(`✅ Service updated with image: ${updatedService.image}`);
+    console.log(`✅ Service updated with image: ${updatedService.image}`);
     
     res.json(updatedService);
   } catch (error) {
@@ -121,7 +121,7 @@ exports.deleteService = async (req, res) => {
       const imagePath = path.join('uploads', 'services', filename);
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
-        //console.log(`🗑️ Deleted service image: ${filename}`);
+        console.log(`🗑️ Deleted service image: ${filename}`);
       }
     }
 
