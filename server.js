@@ -66,13 +66,14 @@ const server = http.createServer(app);
 // ================= SOCKET.IO =================
 const io = socketIo(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: process.env.NODE_ENV === 'production'
+      ? [process.env.FRONTEND_URL]
+      : ['http://localhost:5173', 'http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST']
   },
-  // ✅ Add these options
   transports: ['websocket', 'polling'],
-  allowEIO3: true,  // Allow Engine.IO v3 clients
+  allowEIO3: true,
   pingTimeout: 60000,
   pingInterval: 25000
 });
@@ -103,10 +104,28 @@ io.on('connection', (socket) => {
 // ================= CORS =================
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      return callback(null, true);
+    // Allow Netlify frontend domain
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://pujanam.netlify.app', // ← CHANGE THIS to your actual Netlify URL
+      /\.netlify\.app$/  // Allow all Netlify preview URLs
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is allowed
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) return allowed.test(origin);
+      return allowed === origin;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
     }
-    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -140,9 +159,20 @@ app.use((req, res, next) => {
 app.use(logger);
 
 // ================= STATIC FILES =================
-app.use('/uploads/services', express.static(path.join(__dirname, 'uploads/services')));
-app.use('/uploads/pandits', express.static(path.join(__dirname, 'uploads/pandits')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files with proper security headers
+const serveStaticOptions = {
+  setHeaders: (res, path, stat) => {
+    if (process.env.NODE_ENV === 'production') {
+      // Only allow from your frontend domain
+      res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+  }
+};
+
+app.use('/uploads/services', express.static(path.join(__dirname, 'uploads/services'), serveStaticOptions));
+app.use('/uploads/pandits', express.static(path.join(__dirname, 'uploads/pandits'), serveStaticOptions));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), serveStaticOptions));
 
 // ================= DATABASE =================
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/pujanam', {
@@ -202,7 +232,7 @@ app.get('/api/health/detailed', (req, res) => {
     health.responseTime = Date.now() - health.responseTime;
 
     if (health.responseTime > 1000) {
-      //console.log(`⚠️ Slow database ping: ${health.responseTime}ms`);
+      console.log(`⚠️ Slow database ping: ${health.responseTime}ms`);
     }
 
     res.json(health);
@@ -253,7 +283,7 @@ app.get('/api/debug/users', async (req, res) => {
 
     const users = await User.find();
 
-    //console.log('📊 Database Users:', users);
+    console.log('📊 Database Users:', users);
 
     res.json({
       totalUsers: users.length,
