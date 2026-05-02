@@ -34,10 +34,11 @@ exports.createService = async (req, res) => {
   try {
     const serviceData = {
       ...req.body,
-      image: req.file ? getServiceImageUrl(req, req.file.filename) : req.body.image
+      // With Cloudinary, req.file.path gives the full URL
+      image: req.file ? req.file.path : (req.body.image || '')
     };
 
-    // Parse array fields from string to array
+    // Parse array fields
     if (typeof serviceData.details === 'string') {
       serviceData.details = JSON.parse(serviceData.details);
     }
@@ -46,18 +47,14 @@ exports.createService = async (req, res) => {
     await service.save();
     
     console.log(`✅ Service created with image: ${service.image}`);
-    
     res.status(201).json(service);
   } catch (error) {
-    // Delete uploaded file if there's an error
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
+    console.error('Error creating service:', error);
     res.status(400).json({ message: error.message });
   }
 };
 
-// Update service with image upload
+// FIND the updateService function
 exports.updateService = async (req, res) => {
   try {
     const service = await Service.findById(req.params.id);
@@ -65,12 +62,9 @@ exports.updateService = async (req, res) => {
       return res.status(404).json({ message: 'Service not found' });
     }
 
-    // Store old image path for deletion
-    const oldImage = service.image;
-
     const updateData = {
       ...req.body,
-      image: req.file ? getServiceImageUrl(req, req.file.filename) : req.body.image
+      image: req.file ? req.file.path : req.body.image
     };
 
     // Parse array fields
@@ -84,29 +78,15 @@ exports.updateService = async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    // Delete old image if new image was uploaded
-    if (req.file && oldImage && !oldImage.includes('/images/')) {
-      const oldFilename = oldImage.split('/').pop();
-      const oldImagePath = path.join('uploads', 'services', oldFilename);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-        console.log(`🗑️ Deleted old service image: ${oldFilename}`);
-      }
-    }
-
-    console.log(`✅ Service updated with image: ${updatedService.image}`);
-    
+    console.log(`✅ Service updated: ${updatedService.name}`);
     res.json(updatedService);
   } catch (error) {
-    // Delete uploaded file if there's an error
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
+    console.error('Error updating service:', error);
     res.status(400).json({ message: error.message });
   }
 };
 
-// Delete service
+// FIND the deleteService function - REMOVE local file deletion
 exports.deleteService = async (req, res) => {
   try {
     const service = await Service.findById(req.params.id);
@@ -115,15 +95,14 @@ exports.deleteService = async (req, res) => {
       return res.status(404).json({ message: 'Service not found' });
     }
 
-    // Delete associated image file if it's not a default image
-    if (service.image && !service.image.includes('/images/')) {
-      const filename = service.image.split('/').pop();
-      const imagePath = path.join('uploads', 'services', filename);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-        console.log(`🗑️ Deleted service image: ${filename}`);
-      }
-    }
+    // ✅ REMOVE this local file deletion code
+    // if (service.image && !service.image.includes('/images/')) {
+    //   const filename = service.image.split('/').pop();
+    //   const imagePath = path.join('uploads', 'services', filename);
+    //   if (fs.existsSync(imagePath)) {
+    //     fs.unlinkSync(imagePath);
+    //   }
+    // }
 
     await Service.findByIdAndDelete(req.params.id);
     res.json({ message: 'Service deleted successfully' });

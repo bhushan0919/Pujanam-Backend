@@ -8,7 +8,7 @@ const { authenticatePandit } = require('../middleware/auth');
 const Booking = require('../models/Booking');
 const Pandit = require('../models/Pandit');
 const Notification = require('../models/Notification');
-const upload = require('../middleware/upload');
+const upload = require('../middleware/cloudinaryUpload');
 
 
 // Apply pandit authentication to all routes
@@ -900,12 +900,8 @@ router.put('/profile/image', authenticatePandit, upload.single('panditImage'), a
       });
     }
 
-    // Get the image URL
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/pandits/${req.file.filename}`;
-    
-    // Get old image to delete if needed
-    const pandit = await Pandit.findById(panditId);
-    const oldImage = pandit.image;
+    // Cloudinary returns full URL in req.file.path
+    const imageUrl = req.file.path;
     
     // Update pandit with new image
     const updatedPandit = await Pandit.findByIdAndUpdate(
@@ -913,17 +909,6 @@ router.put('/profile/image', authenticatePandit, upload.single('panditImage'), a
       { image: imageUrl },
       { new: true }
     ).select('-password');
-    
-    // Delete old image if it's not the default
-    if (oldImage && !oldImage.includes('/images/icon.png')) {
-      const fs = require('fs');
-      const path = require('path');
-      const oldFilename = oldImage.split('/').pop();
-      const oldImagePath = path.join(__dirname, '../uploads/pandits', oldFilename);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-      }
-    }
     
     res.json({
       success: true,
@@ -940,6 +925,7 @@ router.put('/profile/image', authenticatePandit, upload.single('panditImage'), a
     });
   }
 });
+
 
 router.post('/logout', authenticatePandit, async (req, res) => {
   try {

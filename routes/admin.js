@@ -8,7 +8,7 @@ const serviceController = require('../controllers/serviceController');
 const { authenticateAdmin, isAdmin } = require('../middleware/auth');
 const Booking = require('../models/Booking'); 
 const { validatePandit, validateService } = require('../middleware/validation');
-const upload = require('../middleware/upload');
+const upload = require('../middleware/cloudinaryUpload');
 const SupportTicket = require('../models/SupportTicket');
 
 // Handle OPTIONS requests for all routes
