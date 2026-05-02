@@ -78,7 +78,7 @@ const io = socketIo(server, {
 });
 
 io.engine.on('connection_error', (err) => {
-  //console.log('❌ Socket connection error:', err);
+  console.log('❌ Socket connection error:', err);
 });
 
 // Make io accessible to routes
@@ -86,50 +86,47 @@ app.set('io', io);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  //console.log('🟢 New client connected:', socket.id);
+  console.log('🟢 New client connected:', socket.id);
 
   socket.on('register', (data) => {
     const { userId, role } = data;
     const room = `${role}_${userId}`;
     socket.join(room);
-    //console.log(`📌 User ${userId} (${role}) joined room: ${room}`);
+    console.log(`📌 User ${userId} (${role}) joined room: ${room}`);
   });
 
   socket.on('disconnect', () => {
-    //console.log('🔴 Client disconnected:', socket.id);
+    console.log('🔴 Client disconnected:', socket.id);
   });
 });
 
 // ================= CORS =================
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? (process.env.FRONTEND_URL || 'https://pujanam.netlify.app').replace(/\/$/, '').split(',')
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow Netlify frontend domain
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'https://pujanam.netlify.app', // ← CHANGE THIS to your actual Netlify URL
-      /\.netlify\.app$/  // Allow all Netlify preview URLs
-    ];
-    
-    // Allow requests with no origin (like mobile apps or curl)
+    // Allow requests with no origin (like mobile apps, curl)
     if (!origin) return callback(null, true);
     
     // Check if origin is allowed
     const isAllowed = allowedOrigins.some(allowed => {
-      if (allowed instanceof RegExp) return allowed.test(origin);
-      return allowed === origin;
+      if (allowed === '*') return true;
+      return origin === allowed || origin.startsWith(allowed);
     });
     
     if (isAllowed) {
       callback(null, true);
     } else {
+      console.log(`❌ CORS blocked: ${origin}`);
+      console.log(`   Allowed: ${allowedOrigins.join(', ')}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  exposedHeaders: ['Content-Length', 'X-Request-Id']
 }));
 
 app.options('*', cors());
@@ -149,57 +146,49 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ================= REQUEST LOGGER =================
 app.use((req, res, next) => {
-  //console.log(`🌐 INCOMING REQUEST: ${req.method} ${req.url}`);
-  //console.log('Origin:', req.headers.origin);
-  //console.log('Authorization:', req.headers.authorization ? 'Present' : 'None');
+  console.log(`🌐 INCOMING REQUEST: ${req.method} ${req.url}`);
+  console.log('Origin:', req.headers.origin);
+  console.log('Authorization:', req.headers.authorization ? 'Present' : 'None');
   next();
 });
 
 app.use(logger);
 
-// ================= STATIC FILES =================
-app.use('/uploads/services', express.static(path.join(__dirname, 'uploads/services'), {
-  setHeaders: (res) => {
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.set('Access-Control-Allow-Origin', '*');
-  }
-}));
-app.use('/uploads/pandits', express.static(path.join(__dirname, 'uploads/pandits'), {
-  setHeaders: (res) => {
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.set('Access-Control-Allow-Origin', '*');
-  }
-}));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 
 // ================= DATABASE =================
+// server.js - SIMPLER VERSION (Recommended)
+const mongoose = require('mongoose');
+
+// Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/pujanam', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
 });
 
 const db = mongoose.connection;
 
-db.on('error', console.error.bind(console, 'connection error:'));
+db.on('error', (error) => {
+  console.error('❌ MongoDB connection error:', error);
+});
 
-db.once('open', async () => {
-  //console.log('✅ Connected to MongoDB');
+db.once('open', () => {
+  console.log('✅ Connected to MongoDB Atlas');
+  console.log(`   Database: ${mongoose.connection.db.databaseName}`);
+  console.log(`   Host: ${mongoose.connection.host}`);
+});
 
-  try {
-    const collections = ['bookings', 'pandits', 'services', 'notifications', 'customers'];
+db.on('disconnected', () => {
+  console.log('⚠️ MongoDB disconnected');
+});
 
-    for (const collection of collections) {
-      try {
-        await mongoose.connection.db.collection(collection).createIndexes();
-        //console.log(`✅ Indexes created for ${collection}`);
-      } catch (err) {
-        //console.log(`ℹ️ No indexes needed for ${collection}:`, err.message);
-      }
-    }
-
-  } catch (error) {
-    console.error('❌ Error creating indexes:', error);
-  }
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  await mongoose.connection.close();
+  console.log('MongoDB connection closed');
+  process.exit(0);
 });
 
 // ================= HEALTH ROUTES =================
@@ -230,7 +219,7 @@ app.get('/api/health/detailed', (req, res) => {
     health.responseTime = Date.now() - health.responseTime;
 
     if (health.responseTime > 1000) {
-      //console.log(`⚠️ Slow database ping: ${health.responseTime}ms`);
+      console.log(`⚠️ Slow database ping: ${health.responseTime}ms`);
     }
 
     res.json(health);
@@ -390,7 +379,7 @@ app.get('/api/debug/notifications', async (req, res) => {
 });
 
 app.get('/api/test', (req, res) => {
-  //console.log('✅ Test endpoint hit!');
+  console.log('✅ Test endpoint hit!');
   res.json({ message: 'Test endpoint working' });
 });
 
@@ -402,7 +391,7 @@ app.get('/api/test-bookings', async (req, res) => {
 
     const count = await Booking.countDocuments();
 
-    //console.log('📊 Test bookings - count:', count);
+    console.log('📊 Test bookings - count:', count);
 
     res.json({
       success: true,
@@ -417,6 +406,23 @@ app.get('/api/test-bookings', async (req, res) => {
     });
   }
 
+});
+
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Also add root health check
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
 });
 
 // ================= API ROUTES =================
@@ -449,10 +455,10 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
 
-  //console.log(`🚀 Server is running on port ${PORT}`);
-  //console.log(`🌐 Local: http://localhost:${PORT}`);
-  //console.log(`🌐 Network: http://127.0.0.1:${PORT}`);
-  //console.log(`🔧 Health: http://localhost:${PORT}/api/health`);
-  //console.log(`🔌 Socket.IO ready`);
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`🌐 Local: http://localhost:${PORT}`);
+  console.log(`🌐 Network: http://127.0.0.1:${PORT}`);
+  console.log(`🔧 Health: http://localhost:${PORT}/api/health`);
+  console.log(`🔌 Socket.IO ready`);
 
 });
