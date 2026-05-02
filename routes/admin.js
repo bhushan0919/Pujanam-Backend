@@ -8,12 +8,12 @@ const serviceController = require('../controllers/serviceController');
 const { authenticateAdmin, isAdmin } = require('../middleware/auth');
 const Booking = require('../models/Booking'); 
 const { validatePandit, validateService } = require('../middleware/validation');
-const upload = require('../middleware/upload');
+const upload = require('../middleware/cloudinaryUpload');
 const SupportTicket = require('../models/SupportTicket');
 
 // Handle OPTIONS requests for all routes
 router.options('*', (req, res) => {
-  //console.log('📡 OPTIONS request received for admin route');
+  console.log('📡 OPTIONS request received for admin route');
   res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -60,15 +60,15 @@ router.post('/services/bulk-update', adminController.bulkUpdateServices);
 
 // Get all bookings with filters
 router.get('/bookings', authenticateAdmin, async (req, res) => {
-  //console.log('📡 BOOKINGS ROUTE HIT');
-  //console.log('   User:', req.user?.email);
+  console.log('📡 BOOKINGS ROUTE HIT');
+  console.log('   User:', req.user?.email);
   
   try {
     const mongoose = require('mongoose'); // Ensure mongoose is available
     
     // Check database connection
     if (mongoose.connection.readyState !== 1) {
-      //console.log('❌ Database not connected');
+      console.log('❌ Database not connected');
       return res.status(500).json({ 
         success: false, 
         message: 'Database connection error' 
@@ -108,7 +108,7 @@ router.get('/bookings', authenticateAdmin, async (req, res) => {
       cancelled: await Booking.countDocuments({ status: 'cancelled' })
     };
     
-    //console.log(`✅ Found ${bookings.length} bookings`);
+    console.log(`✅ Found ${bookings.length} bookings`);
     
     res.json({
       success: true,
@@ -135,7 +135,7 @@ router.get('/bookings', authenticateAdmin, async (req, res) => {
 });
 // Get pandit performance stats
 router.get('/pandits/performance', authenticateAdmin, (req, res) => {
-  //console.log('📊 Pandit performance endpoint hit');
+  console.log('📊 Pandit performance endpoint hit');
   res.json({
     success: true,
     pandits: [] // Return empty array for now
@@ -147,7 +147,7 @@ router.get('/analytics/bookings', adminController.getBookingAnalytics);
 
 // Get recent activity
 router.get('/activity/recent', authenticateAdmin, (req, res) => {
-  //console.log('📊 Recent activity endpoint hit');
+  console.log('📊 Recent activity endpoint hit');
   res.json({
     success: true,
     activities: [] // Return empty array for now
@@ -304,7 +304,7 @@ router.patch('/support-tickets/:id/status', authenticateAdmin, async (req, res) 
       });
     }
     
-    //console.log(`✅ Ticket ${ticket._id} status updated to: ${status}`);
+    console.log(`✅ Ticket ${ticket._id} status updated to: ${status}`);
     
     res.json({
       success: true,
@@ -397,10 +397,10 @@ router.post('/bookings/:bookingId/admin-cancel', authenticateAdmin, async (req, 
     
     await booking.save();
     
-    //console.log(`✅ Admin cancelled booking ${bookingId}`);
-    //console.log(`   Previous Status: ${previousStatus}`);
-    //console.log(`   Hours before puja: ${hoursDifference.toFixed(2)}`);
-    //console.log(`   Reason: ${reason || 'Admin action'}`);
+    console.log(`✅ Admin cancelled booking ${bookingId}`);
+    console.log(`   Previous Status: ${previousStatus}`);
+    console.log(`   Hours before puja: ${hoursDifference.toFixed(2)}`);
+    console.log(`   Reason: ${reason || 'Admin action'}`);
     
     res.json({
       success: true,
