@@ -76,7 +76,7 @@ const io = socketIo(server, {
   pingTimeout: 60000,
   pingInterval: 25000
 });
-
+  
 io.engine.on('connection_error', (err) => {
   console.log('❌ Socket connection error:', err);
 });
@@ -157,8 +157,7 @@ app.use(logger);
 
 
 // ================= DATABASE =================
-// server.js - SIMPLER VERSION (Recommended)
-const mongoose = require('mongoose');
+
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/pujanam', {
