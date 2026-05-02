@@ -78,7 +78,7 @@ exports.getFilterOptions = async (req, res) => {
 // Get unique locations from pandits
 exports.getPanditLocations = async (req, res) => {
   try {
-    //console.log('📍 Fetching unique pandit locations...');
+    console.log('📍 Fetching unique pandit locations...');
     
     // Check if Pandit model exists and has data
     const Pandit = require('../models/Pandit');
@@ -86,7 +86,7 @@ exports.getPanditLocations = async (req, res) => {
     // Get all distinct locations
     const locations = await Pandit.distinct('location');
     
-    //console.log('Raw locations from DB:', locations);
+    console.log('Raw locations from DB:', locations);
     
     // Filter out empty, null, undefined values
     const validLocations = locations.filter(loc => {
@@ -96,7 +96,7 @@ exports.getPanditLocations = async (req, res) => {
     // Sort alphabetically
     validLocations.sort();
     
-    //console.log('Valid locations to return:', validLocations);
+    console.log('Valid locations to return:', validLocations);
     
     res.json({
       success: true,
@@ -126,14 +126,17 @@ exports.getPanditById = async (req, res) => {
   }
 };
 
-// Create new pandit with image upload
+// FIND the createPandit function (around line 100)
 exports.createPandit = async (req, res) => {
   try {
+    // REPLACE the image URL assignment
     const panditData = {
       ...req.body,
-      image: req.file ? getPanditImageUrl(req, req.file.filename) : (req.body.image || '/images/icon.png')
+      // With Cloudinary, req.file.path gives the full URL
+      image: req.file ? req.file.path : (req.body.image || '/images/icon.png')
     };
-
+    
+    // Rest of the code remains the same...
     // Parse array fields from string to array
     if (typeof panditData.services === 'string') {
       panditData.services = JSON.parse(panditData.services);
@@ -141,34 +144,25 @@ exports.createPandit = async (req, res) => {
     if (typeof panditData.languages === 'string') {
       panditData.languages = JSON.parse(panditData.languages);
     }
-
+    
     // Convert numeric fields
     if (panditData.rating) panditData.rating = parseFloat(panditData.rating);
     if (panditData.experience) panditData.experience = parseInt(panditData.experience);
-
+    
     const pandit = new Pandit(panditData);
     await pandit.save();
     
-    //console.log(`✅ Pandit created with image: ${pandit.image}`);
-    
+    console.log(`✅ Pandit created with image: ${pandit.image}`);
     res.status(201).json(pandit);
   } catch (error) {
-    // Delete uploaded file if there's an error
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
+    console.error('Error creating pandit:', error);
     res.status(400).json({ message: error.message });
   }
 };
 
-// Update pandit with image upload
+// FIND the updatePandit function (around line 140)
 exports.updatePandit = async (req, res) => {
   try {
-    //console.log('📝 Update pandit request received');
-    //console.log('   Params ID:', req.params.id);
-    //console.log('   Body:', req.body);
-    //console.log('   File:', req.file ? req.file.filename : 'No file');
-    
     const pandit = await Pandit.findById(req.params.id);
     if (!pandit) {
       return res.status(404).json({ 
@@ -177,22 +171,19 @@ exports.updatePandit = async (req, res) => {
       });
     }
 
-    // Store old image path for deletion
-    const oldImage = pandit.image;
-
     const updateData = { ...req.body };
     
-    // Handle image update
+    // Handle image update - Cloudinary URL is in req.file.path
     if (req.file) {
-      updateData.image = `${req.protocol}://${req.get('host')}/uploads/pandits/${req.file.filename}`;
+      updateData.image = req.file.path; // Cloudinary returns full URL
     }
 
-    // Parse array fields
+    // Parse array fields (same as before)
     if (typeof updateData.services === 'string') {
       try {
         updateData.services = JSON.parse(updateData.services);
       } catch (e) {
-        //console.log('Services parsing error:', e);
+        console.log('Services parsing error:', e);
       }
     }
     
@@ -200,7 +191,7 @@ exports.updatePandit = async (req, res) => {
       try {
         updateData.languages = JSON.parse(updateData.languages);
       } catch (e) {
-        //console.log('Languages parsing error:', e);
+        console.log('Languages parsing error:', e);
       }
     }
 
@@ -208,19 +199,10 @@ exports.updatePandit = async (req, res) => {
     if (updateData.rating) updateData.rating = parseFloat(updateData.rating);
     if (updateData.experience) updateData.experience = parseInt(updateData.experience);
 
-    // Handle password - only update if provided and not placeholder
-    if (updateData.password && updateData.password === 'pandit123') {
-      // This is the default placeholder, don't update if pandit already has password
-      if (!pandit.password || pandit.password === 'pandit123') {
-        // Only set if it's actually new
-        //console.log('Using default password for new pandit');
-      } else {
-        // Don't override existing password with placeholder
-        delete updateData.password;
-      }
+    // Handle password
+    if (updateData.password && updateData.password === '********') {
+      delete updateData.password;
     }
-
-    //console.log('📦 Final update data:', updateData);
 
     const updatedPandit = await Pandit.findByIdAndUpdate(
       req.params.id,
@@ -228,17 +210,7 @@ exports.updatePandit = async (req, res) => {
       { new: true, runValidators: true }
     ).select('-password');
 
-    // Delete old image if new image was uploaded and it's not the default icon
-    if (req.file && oldImage && !oldImage.includes('/images/icon.png')) {
-      const oldFilename = oldImage.split('/').pop();
-      const oldImagePath = path.join('uploads', 'pandits', oldFilename);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-        //console.log(`🗑️ Deleted old pandit image: ${oldFilename}`);
-      }
-    }
-
-    //console.log(`✅ Pandit updated: ${updatedPandit.name}`);
+    console.log(`✅ Pandit updated: ${updatedPandit.name}`);
     
     res.json({
       success: true,
@@ -248,15 +220,6 @@ exports.updatePandit = async (req, res) => {
     
   } catch (error) {
     console.error('❌ Error updating pandit:', error);
-    
-    // Delete uploaded file if there's an error
-    if (req.file) {
-      const filePath = path.join('uploads', 'pandits', req.file.filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
-    
     res.status(400).json({ 
       success: false,
       message: error.message 
@@ -264,7 +227,7 @@ exports.updatePandit = async (req, res) => {
   }
 };
 
-// Delete pandit
+// FIND the deletePandit function - REMOVE the local file deletion code
 exports.deletePandit = async (req, res) => {
   try {
     const pandit = await Pandit.findById(req.params.id);
@@ -273,15 +236,14 @@ exports.deletePandit = async (req, res) => {
       return res.status(404).json({ message: 'Pandit not found' });
     }
 
-    // Delete associated image file if it's not the default icon
-    if (pandit.image && !pandit.image.includes('/images/icon.png')) {
-      const filename = pandit.image.split('/').pop();
-      const imagePath = path.join('uploads', 'pandits', filename);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-        //console.log(`🗑️ Deleted pandit image: ${filename}`);
-      }
-    }
+    // ✅ REMOVE this local file deletion code (not needed with Cloudinary)
+    // if (pandit.image && !pandit.image.includes('/images/icon.png')) {
+    //   const filename = pandit.image.split('/').pop();
+    //   const imagePath = path.join('uploads', 'pandits', filename);
+    //   if (fs.existsSync(imagePath)) {
+    //     fs.unlinkSync(imagePath);
+    //   }
+    // }
 
     await Pandit.findByIdAndDelete(req.params.id);
     res.json({ message: 'Pandit deleted successfully' });
