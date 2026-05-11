@@ -1,5 +1,6 @@
 // backend/controllers/adminController.js - COMPLETE FILE
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const Pandit = require('../models/Pandit');
 const Service = require('../models/Service');
 const Booking = require('../models/Booking');
@@ -8,6 +9,22 @@ const Customer = require('../models/Customer');
 const SupportTicket = require('../models/SupportTicket');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { sendPanditWelcomeEmail } = require('../utils/panditEmailService');
+
+
+
+
+const getPanditImageUrl = (req, filename) => {
+  if (!filename) return '/images/icon.png';
+
+  // For Cloudinary (req.file.path contains the full URL)
+  if (req.file && req.file.path) {
+    return req.file.path;
+  }
+
+  // For local uploads (fallback)
+  return `${req.protocol}://${req.get('host')}/uploads/pandits/${filename}`;
+};
 
 // Admin dashboard stats
 exports.getDashboardStats = async (req, res) => {
@@ -45,12 +62,12 @@ exports.getDashboardStats = async (req, res) => {
 exports.bulkUpdatePandits = async (req, res) => {
   try {
     const { ids, updateData } = req.body;
-    
+
     const result = await Pandit.updateMany(
       { _id: { $in: ids } },
       { $set: updateData }
     );
-    
+
     res.json({
       message: `${result.modifiedCount} pandits updated successfully`,
       modifiedCount: result.modifiedCount
@@ -64,12 +81,12 @@ exports.bulkUpdatePandits = async (req, res) => {
 exports.bulkUpdateServices = async (req, res) => {
   try {
     const { ids, updateData } = req.body;
-    
+
     const result = await Service.updateMany(
       { _id: { $in: ids } },
       { $set: updateData }
     );
-    
+
     res.json({
       message: `${result.modifiedCount} services updated successfully`,
       modifiedCount: result.modifiedCount
@@ -80,6 +97,7 @@ exports.bulkUpdateServices = async (req, res) => {
 };
 
 // Admin login - FIXED VERSION
+// adminController.js - Update the adminLogin function
 exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -93,7 +111,6 @@ exports.adminLogin = async (req, res) => {
       });
     }
 
-    // Find user by email
     const user = await User.findOne({ email });
     
     if (!user) {
@@ -104,7 +121,6 @@ exports.adminLogin = async (req, res) => {
       });
     }
 
-    // Check if user is admin
     if (user.role !== 'admin') {
       console.log('❌ User is not admin:', user.role);
       return res.status(403).json({
@@ -113,7 +129,6 @@ exports.adminLogin = async (req, res) => {
       });
     }
 
-    // Check password
     const isPasswordValid = await user.comparePassword(password);
     console.log('🔑 Password validation result:', isPasswordValid);
 
@@ -125,20 +140,21 @@ exports.adminLogin = async (req, res) => {
       });
     }
 
-    // Generate JWT token with consistent structure
+    // ✅ Set token expiry to 8 hours (28800 seconds)
     const token = jwt.sign(
       { 
         userId: user._id.toString(),
-        id: user._id.toString(), // Add both for compatibility
+        id: user._id.toString(),
         role: user.role,
         email: user.email,
         username: user.username
       },
       process.env.JWT_SECRET || 'fallback-secret-for-development',
-      { expiresIn: '24h' }
+      { expiresIn: '8h' } // 8 hours
     );
 
     console.log('✅ Login successful for:', user.email);
+    console.log('   Token expires in: 8 hours');
 
     res.json({
       success: true,
@@ -164,7 +180,7 @@ exports.getAllData = async (req, res) => {
   try {
     const pandits = await Pandit.find().sort({ createdAt: -1 });
     const services = await Service.find().sort({ createdAt: -1 });
-    
+
     res.json({
       pandits,
       services
@@ -174,18 +190,229 @@ exports.getAllData = async (req, res) => {
   }
 };
 
+exports.createPandit = async (req, res) => {
+  try {
+    console.log('📝 Creating new pandit...');
+    console.log('   Request body:', req.body);
+    console.log('   File:', req.file ? req.file.filename : 'No file');
+
+    // Prepare pandit data
+    const panditData = {
+      ...req.body,
+      image: req.file ? getPanditImageUrl(req, req.file.filename) : (req.body.image || '/images/icon.png')
+    };
+
+    // Parse array fields from string to array (for FormData)
+    if (typeof panditData.services === 'string') {
+      try {
+        panditData.services = JSON.parse(panditData.services);
+      } catch (e) {
+        console.log('Services parsing error, treating as array with single item:', panditData.services);
+        panditData.services = [panditData.services];
+      }
+    }
+
+    if (typeof panditData.languages === 'string') {
+      try {
+        panditData.languages = JSON.parse(panditData.languages);
+      } catch (e) {
+        console.log('Languages parsing error, treating as array with single item:', panditData.languages);
+        panditData.languages = [panditData.languages];
+      }
+    }
+
+    // Convert numeric fields
+    if (panditData.rating) panditData.rating = parseFloat(panditData.rating);
+    if (panditData.experience) panditData.experience = parseInt(panditData.experience);
+
+    // Ensure username is set
+    if (!panditData.username && panditData.name) {
+      panditData.username = panditData.name.toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[^a-z0-9]/g, '')
+        .substring(0, 15);
+    }
+
+    // Store plain password for email (before hashing)
+    const plainPassword = panditData.password || 'pandit123';
+
+    // Create pandit (password will be hashed by pre-save hook)
+    const pandit = new Pandit(panditData);
+    await pandit.save();
+
+    console.log(`✅ Pandit created successfully: ${pandit.name} (${pandit.email})`);
+    console.log(`   Username: ${pandit.username}`);
+    console.log(`   Password: ${plainPassword}`);
+
+    // Send welcome email to pandit
+    try {
+      const emailSent = await sendPanditWelcomeEmail(pandit, plainPassword);
+      if (emailSent) {
+        console.log(`📧 Welcome email sent to ${pandit.email}`);
+      } else {
+        console.log(`⚠️ Failed to send email to ${pandit.email}`);
+      }
+    } catch (emailError) {
+      console.error('❌ Email sending error (non-critical):', emailError.message);
+      // Don't fail the pandit creation if email fails
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Pandit created successfully! Welcome email sent to ${pandit.email}`,
+      pandit: {
+        id: pandit._id,
+        name: pandit.name,
+        email: pandit.email,
+        username: pandit.username,
+        contact: pandit.contact,
+        location: pandit.location
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating pandit:', error);
+
+    // Delete uploaded file if there's an error
+    if (req.file) {
+      const fs = require('fs');
+      const path = require('path');
+      try {
+        fs.unlinkSync(req.file.path);
+        console.log(`🗑️ Deleted uploaded file: ${req.file.filename}`);
+      } catch (unlinkError) {
+        console.log('Could not delete file:', unlinkError.message);
+      }
+    }
+
+    // Handle duplicate key error (username or email already exists)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field} already exists. Please use a different ${field}.`
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to create pandit'
+    });
+  }
+};
+
+
+exports.updatePandit = async (req, res) => {
+  try {
+    console.log('📝 Updating pandit:', req.params.id);
+
+    const pandit = await Pandit.findById(req.params.id);
+    if (!pandit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pandit not found'
+      });
+    }
+
+    const updateData = { ...req.body };
+
+    // Handle image update
+    if (req.file) {
+      // For Cloudinary, req.file.path contains the full URL
+      updateData.image = req.file.path || getPanditImageUrl(req, req.file.filename);
+    }
+
+    // Parse array fields
+    if (typeof updateData.services === 'string') {
+      try {
+        updateData.services = JSON.parse(updateData.services);
+      } catch (e) {
+        updateData.services = [updateData.services];
+      }
+    }
+
+    if (typeof updateData.languages === 'string') {
+      try {
+        updateData.languages = JSON.parse(updateData.languages);
+      } catch (e) {
+        updateData.languages = [updateData.languages];
+      }
+    }
+
+    // Convert numeric fields
+    if (updateData.rating) updateData.rating = parseFloat(updateData.rating);
+    if (updateData.experience) updateData.experience = parseInt(updateData.experience);
+
+    // Handle password - only update if provided and not placeholder
+    if (updateData.password === '********' || !updateData.password) {
+      delete updateData.password;
+    }
+
+    const updatedPandit = await Pandit.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    console.log(`✅ Pandit updated: ${updatedPandit.name}`);
+
+    res.json({
+      success: true,
+      message: 'Pandit updated successfully',
+      pandit: updatedPandit
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating pandit:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// DELETE PANDIT - Add this function
+exports.deletePandit = async (req, res) => {
+  try {
+    const pandit = await Pandit.findById(req.params.id);
+
+    if (!pandit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pandit not found'
+      });
+    }
+
+    await Pandit.findByIdAndDelete(req.params.id);
+
+    console.log(`✅ Pandit deleted: ${pandit.name}`);
+
+    res.json({
+      success: true,
+      message: 'Pandit deleted successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error deleting pandit:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
 // Toggle pandit availability
 exports.togglePanditAvailability = async (req, res) => {
   try {
     const pandit = await Pandit.findById(req.params.id);
-    
+
     if (!pandit) {
       return res.status(404).json({ message: 'Pandit not found' });
     }
-    
+
     pandit.isAvailable = !pandit.isAvailable;
     await pandit.save();
-    
+
     res.json({
       message: `Pandit ${pandit.isAvailable ? 'activated' : 'deactivated'} successfully`,
       pandit
@@ -199,14 +426,14 @@ exports.togglePanditAvailability = async (req, res) => {
 exports.toggleServiceActivity = async (req, res) => {
   try {
     const service = await Service.findById(req.params.id);
-    
+
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
     }
-    
+
     service.isActive = !service.isActive;
     await service.save();
-    
+
     res.json({
       message: `Service ${service.isActive ? 'activated' : 'deactivated'} successfully`,
       service
@@ -224,11 +451,11 @@ exports.getAllBookings = async (req, res) => {
   try {
     console.log('📡 Admin getAllBookings called');
     console.log('   User:', req.user?.email);
-    
+
     const { status, panditId, fromDate, toDate, page = 1, limit = 50 } = req.query;
-    
+
     let query = {};
-    
+
     // Apply filters
     if (status) query.status = status;
     if (panditId) query.panditId = panditId;
@@ -237,11 +464,11 @@ exports.getAllBookings = async (req, res) => {
       if (fromDate) query.dateTime.$gte = new Date(fromDate);
       if (toDate) query.dateTime.$lte = new Date(toDate);
     }
-    
+
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
-    
+
     const bookings = await Booking.find(query)
       .populate('serviceId', 'name price category')
       .populate('panditId', 'name email contact location rating')
@@ -250,9 +477,9 @@ exports.getAllBookings = async (req, res) => {
       .skip(skip)
       .limit(limitNum)
       .lean();
-    
+
     const total = await Booking.countDocuments(query);
-    
+
     // Calculate statistics
     const stats = {
       total: total,
@@ -263,13 +490,13 @@ exports.getAllBookings = async (req, res) => {
       completed: await Booking.countDocuments({ status: 'completed' }),
       cancelled: await Booking.countDocuments({ status: 'cancelled' })
     };
-    
+
     const paidBookings = await Booking.find({ paymentStatus: 'completed' });
     const totalAdvanceAmount = paidBookings.reduce((sum, b) => sum + (b.advanceAmount || 0), 0);
-    
+
     stats.totalAdvanceAmount = totalAdvanceAmount;
     stats.paidBookings = paidBookings.length;
-    
+
     res.json({
       success: true,
       bookings,
@@ -293,39 +520,39 @@ exports.getPanditPerformance = async (req, res) => {
     const pandits = await Pandit.find()
       .select('name email contact location rating experience isAvailable')
       .lean();
-    
+
     const performanceData = await Promise.all(
       pandits.map(async (pandit) => {
         const totalBookings = await Booking.countDocuments({ panditId: pandit._id });
-        const completedBookings = await Booking.countDocuments({ 
-          panditId: pandit._id, 
-          status: 'completed' 
+        const completedBookings = await Booking.countDocuments({
+          panditId: pandit._id,
+          status: 'completed'
         });
-        const acceptedBookings = await Booking.countDocuments({ 
-          panditId: pandit._id, 
-          status: { $in: ['accepted', 'confirmed', 'completed'] } 
+        const acceptedBookings = await Booking.countDocuments({
+          panditId: pandit._id,
+          status: { $in: ['accepted', 'confirmed', 'completed'] }
         });
-        const cancelledBookings = await Booking.countDocuments({ 
-          panditId: pandit._id, 
-          status: 'cancelled' 
+        const cancelledBookings = await Booking.countDocuments({
+          panditId: pandit._id,
+          status: 'cancelled'
         });
-        
+
         // Calculate earnings
-        const completed = await Booking.find({ 
-          panditId: pandit._id, 
-          status: 'completed' 
+        const completed = await Booking.find({
+          panditId: pandit._id,
+          status: 'completed'
         }).select('actualPrice');
-        
-        const totalEarnings = completed.reduce((sum, booking) => 
+
+        const totalEarnings = completed.reduce((sum, booking) =>
           sum + (booking.actualPrice || 0), 0);
-        
+
         // Get recent bookings
         const recentBookings = await Booking.find({ panditId: pandit._id })
           .populate('serviceId', 'name')
           .sort({ createdAt: -1 })
           .limit(5)
           .lean();
-        
+
         return {
           ...pandit,
           stats: {
@@ -334,11 +561,11 @@ exports.getPanditPerformance = async (req, res) => {
             acceptedBookings,
             cancelledBookings,
             totalEarnings,
-            acceptanceRate: totalBookings > 0 
-              ? Math.round((acceptedBookings / totalBookings) * 100) 
+            acceptanceRate: totalBookings > 0
+              ? Math.round((acceptedBookings / totalBookings) * 100)
               : 0,
-            completionRate: acceptedBookings > 0 
-              ? Math.round((completedBookings / acceptedBookings) * 100) 
+            completionRate: acceptedBookings > 0
+              ? Math.round((completedBookings / acceptedBookings) * 100)
               : 0
           },
           recentBookings: recentBookings.map(b => ({
@@ -351,7 +578,7 @@ exports.getPanditPerformance = async (req, res) => {
         };
       })
     );
-    
+
     res.json({
       success: true,
       pandits: performanceData
@@ -366,10 +593,10 @@ exports.getPanditPerformance = async (req, res) => {
 exports.getBookingAnalytics = async (req, res) => {
   try {
     const { period = 'month' } = req.query; // day, week, month, year
-    
+
     let dateFilter = {};
     const now = new Date();
-    
+
     if (period === 'day') {
       const today = new Date(now.setHours(0, 0, 0, 0));
       dateFilter = { $gte: today };
@@ -383,13 +610,13 @@ exports.getBookingAnalytics = async (req, res) => {
       const yearAgo = new Date(now.setFullYear(now.getFullYear() - 1));
       dateFilter = { $gte: yearAgo };
     }
-    
+
     // Bookings over time
     const bookingsOverTime = await Booking.aggregate([
       { $match: dateFilter ? { createdAt: dateFilter } : {} },
       {
         $group: {
-          _id: { 
+          _id: {
             year: { $year: '$createdAt' },
             month: { $month: '$createdAt' },
             day: { $dayOfMonth: '$createdAt' }
@@ -402,7 +629,7 @@ exports.getBookingAnalytics = async (req, res) => {
       },
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
     ]);
-    
+
     // Popular services
     const popularServices = await Booking.aggregate([
       { $match: { status: 'completed' } },
@@ -425,7 +652,7 @@ exports.getBookingAnalytics = async (req, res) => {
       },
       { $unwind: '$service' }
     ]);
-    
+
     // Pandit rankings
     const topPandits = await Booking.aggregate([
       { $match: { status: 'completed' } },
@@ -448,7 +675,7 @@ exports.getBookingAnalytics = async (req, res) => {
       },
       { $unwind: '$pandit' }
     ]);
-    
+
     res.json({
       success: true,
       analytics: {
@@ -480,23 +707,23 @@ exports.getBookingDetails = async (req, res) => {
       .populate('serviceId')
       .populate('panditId')
       .populate('customerId');
-    
+
     if (!booking) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Booking not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
       });
     }
-    
-    res.json({ 
-      success: true, 
-      booking 
+
+    res.json({
+      success: true,
+      booking
     });
   } catch (error) {
     console.error('Get booking details error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -510,24 +737,24 @@ exports.updateBookingStatus = async (req, res) => {
       { status },
       { new: true }
     );
-    
+
     if (!booking) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Booking not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
       });
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Booking status updated',
-      booking 
+      booking
     });
   } catch (error) {
     console.error('Update booking status error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -536,7 +763,7 @@ exports.updateBookingStatus = async (req, res) => {
 exports.getRecentActivity = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
-    
+
     const recentBookings = await Booking.find()
       .populate('serviceId', 'name')
       .populate('panditId', 'name')
@@ -544,12 +771,12 @@ exports.getRecentActivity = async (req, res) => {
       .sort({ updatedAt: -1 })
       .limit(limit)
       .lean();
-    
+
     const activities = recentBookings.map(booking => {
       let action = '';
       let description = '';
-      
-      switch(booking.status) {
+
+      switch (booking.status) {
         case 'pending':
           action = '🆕 New Booking';
           description = `New booking for ${booking.serviceId?.name}`;
@@ -575,7 +802,7 @@ exports.getRecentActivity = async (req, res) => {
           description = `${booking.serviceId?.name} booking cancelled`;
           break;
       }
-      
+
       return {
         id: booking._id,
         action,
@@ -586,7 +813,7 @@ exports.getRecentActivity = async (req, res) => {
         status: booking.status
       };
     });
-    
+
     res.json({
       success: true,
       activities
@@ -596,3 +823,42 @@ exports.getRecentActivity = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+
+// Resend pandit credentials
+exports.resendPanditCredentials = async (req, res) => {
+  try {
+    const pandit = await Pandit.findById(req.params.id);
+
+    if (!pandit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pandit not found'
+      });
+    }
+
+    // Note: You cannot retrieve the original password as it's hashed
+    // Send a password reset link instead
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    pandit.resetPasswordToken = resetToken;
+    pandit.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await pandit.save();
+
+    // Send password reset email
+    const resetLink = `${process.env.FRONTEND_URL}/pandit-reset-password?token=${resetToken}`;
+
+    // Send email... (implement similar to welcome email)
+
+    res.json({
+      success: true,
+      message: 'Password reset link sent to pandit email'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+

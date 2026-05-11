@@ -7,7 +7,17 @@ const panditSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   location: { type: String, required: true },
   services: [{ type: String, required: true }],
-  contact: { type: String, required: true },
+  contact: { 
+    type: String, 
+    required: true, 
+    unique: true,  // ✅ ADD THIS - Make contact unique
+    validate: {
+      validator: function(v) {
+        return /^[6-9]\d{9}$/.test(v); // Indian mobile number validation
+      },
+      message: 'Please enter a valid 10-digit Indian mobile number'
+    }
+  },
   email: { type: String, required: true, lowercase: true },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -34,11 +44,17 @@ const panditSchema = new mongoose.Schema({
   lastActivityAt: {
     type: Date,
     default: Date.now
+  },
+resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: null
   }
+}, {timestamps: true});
 
-}, {
-  timestamps: true
-});
 
 // Index for search functionality
 panditSchema.index({ name: 'text', location: 'text', services: 'text' });
