@@ -96,7 +96,7 @@ const seedDatabase = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/pujanam');
     
-    //console.log('Connected to MongoDB');
+    console.log('Connected to MongoDB');
     
     // Clear existing data
     await Pandit.deleteMany({});
@@ -106,9 +106,9 @@ const seedDatabase = async () => {
     await Pandit.insertMany(seedPandits);
     await Service.insertMany(seedServices);
     
-    //console.log('Database seeded successfully!');
-    //console.log(`Created ${seedPandits.length} pandits`);
-    //console.log(`Created ${seedServices.length} services`);
+    console.log('Database seeded successfully!');
+    console.log(`Created ${seedPandits.length} pandits`);
+    console.log(`Created ${seedServices.length} services`);
     
     process.exit(0);
   } catch (error) {

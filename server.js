@@ -13,8 +13,11 @@ const socketIo = require('socket.io');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const compatibilityRoutes = require('./routes/compatibility');
 
 
+
+console.log("MONGO URI:", process.env.MONGODB_URI);
 // ================= ENVIRONMENT CHECK =================
 const requiredEnvVars = ['JWT_SECRET', 'MONGODB_URI'];
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
@@ -433,6 +436,10 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/pandit', require('./routes/pandit'));
 app.use('/api/user', require('./routes/user'));
 app.use('/api/payment', require('./routes/payment'));
+app.use('/api/application', require('./routes/application'));
+app.use('/api/astro-consultation', require('./routes/astroConsultation'));
+app.use('/api/free-astro', require('./routes/freeAstro'));
+app.use('/api/astro', compatibilityRoutes);
 
 // ================= ERROR HANDLER =================
 app.use(errorHandler);

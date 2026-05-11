@@ -49,7 +49,7 @@ exports.authenticateCustomer = async (req, res, next) => {
       role: 'customer'
     };
     
-    //console.log(`✅ Customer authenticated: ${customer.email} (Phone: ${customer.phone})`);
+    console.log(`✅ Customer authenticated: ${customer.email} (Phone: ${customer.phone})`);
     next();
     
   } catch (error) {
@@ -118,7 +118,7 @@ exports.authenticatePandit = async (req, res, next) => {
       panditId: pandit._id
     };
     
-    //console.log(`✅ Pandit authenticated: ${pandit.name}`);
+    console.log(`✅ Pandit authenticated: ${pandit.name}`);
     next();
     
   } catch (error) {
@@ -166,13 +166,22 @@ exports.authenticateAdmin = async (req, res, next) => {
       });
     }
     
+    // Check if token is expired
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (decoded.exp && decoded.exp < currentTime) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expired. Please login again.'
+      });
+    }
+    
     req.user = decoded;
-    //console.log(`✅ Admin authenticated: ${decoded.email}`);
     next();
     
   } catch (error) {
     console.error('❌ Admin auth error:', error.message);
     
+    // Only return 401 for actual token errors, not for network issues
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
         success: false,
@@ -182,7 +191,7 @@ exports.authenticateAdmin = async (req, res, next) => {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
-        message: 'Token expired'
+        message: 'Token expired. Please login again.'
       });
     }
     
@@ -192,6 +201,7 @@ exports.authenticateAdmin = async (req, res, next) => {
     });
   }
 };
+
 
 // Role check middleware
 exports.isAdmin = (req, res, next) => {

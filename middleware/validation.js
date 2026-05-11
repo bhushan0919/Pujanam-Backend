@@ -26,20 +26,20 @@ exports.validatePandit = [
     .withMessage('Experience must be a positive number'),
   
   (req, res, next) => {
-    //console.log('🔍 Pandit Validation Debug:');
-    //console.log('   Body received:', req.body);
+    console.log('🔍 Pandit Validation Debug:');
+    console.log('   Body received:', req.body);
     
     const errors = validationResult(req);
     
     if (!errors.isEmpty()) {
-      //console.log('❌ Validation errors:', errors.array());
+      console.log('❌ Validation errors:', errors.array());
       return res.status(400).json({ 
         message: 'Validation failed', 
         errors: errors.array() 
       });
     }
     
-    //console.log('✅ Validation passed');
+    console.log('✅ Validation passed');
     next();
   }
 ];
@@ -63,21 +63,21 @@ exports.validateService = [
     .withMessage('Invalid category'),
   
   (req, res, next) => {
-    //console.log('🔍 Service Validation Debug:');
-    //console.log('   Body received:', req.body);
-    //console.log('   Files received:', req.file);
+    console.log('🔍 Service Validation Debug:');
+    console.log('   Body received:', req.body);
+    console.log('   Files received:', req.file);
     
     const errors = validationResult(req);
     
     if (!errors.isEmpty()) {
-      //console.log('❌ Service validation errors:', errors.array());
+      console.log('❌ Service validation errors:', errors.array());
       return res.status(400).json({ 
         message: 'Validation failed', 
         errors: errors.array() 
       });
     }
     
-    //console.log('✅ Service validation passed');
+    console.log('✅ Service validation passed');
     next();
   }
 ];

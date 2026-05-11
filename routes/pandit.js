@@ -579,19 +579,76 @@ router.get('/profile', async (req, res) => {
   }
 });
 
-router.put('/profile', async (req, res) => {
+// Update pandit profile with contact uniqueness check
+router.put('/profile', authenticatePandit, upload.single('panditImage'), async (req, res) => {
   try {
     const panditId = req.user.id;
-    const updateData = req.body;
+    const updateData = {};
     
-    const Pandit = require('../models/Pandit');
-    
-    // Don't allow password updates via this route
-    if (updateData.password) {
-      delete updateData.password;
+    // Only update allowed fields
+    if (req.body.username) {
+      // Check if username already exists for another pandit
+      const existingPandit = await Pandit.findOne({ 
+        username: req.body.username, 
+        _id: { $ne: panditId }
+      });
+      
+      if (existingPandit) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username already taken. Please choose another username.'
+        });
+      }
+      updateData.username = req.body.username;
     }
     
-    const pandit = await Pandit.findByIdAndUpdate(
+    // ✅ ADD CONTACT UNIQUENESS CHECK
+    if (req.body.contact) {
+      // Validate contact format
+      const phoneRegex = /^[6-9]\d{9}$/;
+      if (!phoneRegex.test(req.body.contact)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please enter a valid 10-digit Indian mobile number'
+        });
+      }
+      
+      // Check if contact already exists for another pandit
+      const existingContact = await Pandit.findOne({ 
+        contact: req.body.contact, 
+        _id: { $ne: panditId }
+      });
+      
+      if (existingContact) {
+        return res.status(400).json({
+          success: false,
+          message: 'Contact number already registered with another pandit account.'
+        });
+      }
+      updateData.contact = req.body.contact;
+    }
+    
+    // Handle image update with Cloudinary
+    if (req.file) {
+      updateData.image = req.file.path;
+    }
+    
+    // Handle password change
+    if (req.body.currentPassword && req.body.newPassword) {
+      const pandit = await Pandit.findById(panditId);
+      const isValid = await pandit.comparePassword(req.body.currentPassword);
+      
+      if (!isValid) {
+        return res.status(401).json({
+          success: false,
+          message: 'Current password is incorrect'
+        });
+      }
+      
+      updateData.password = req.body.newPassword;
+    }
+    
+    const updatedPandit = await Pandit.findByIdAndUpdate(
       panditId,
       updateData,
       { new: true, runValidators: true }
@@ -599,16 +656,40 @@ router.put('/profile', async (req, res) => {
     
     res.json({
       success: true,
-      message: 'Profile updated successfully!',
-      pandit
+      message: 'Profile updated successfully',
+      pandit: updatedPandit
     });
+    
   } catch (error) {
     console.error('Profile update error:', error);
-    res.status(500).json({ success: false, message: 'Error updating profile' });
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      let userMessage = '';
+      
+      if (field === 'username') {
+        userMessage = 'Username already taken. Please choose another username.';
+      } else if (field === 'email') {
+        userMessage = 'Email already registered with another account.';
+      } else if (field === 'contact') {
+        userMessage = 'Contact number already registered with another pandit account.';
+      } else {
+        userMessage = `${field} already exists. Please use a different ${field}.`;
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: userMessage
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
-
-
 
 // Generating verification code for booking completion
 router.post('/bookings/:bookingId/generate-code', async (req, res) => {
@@ -952,6 +1033,58 @@ router.get('/debug/locations', async (req, res) => {
   }
 });
 
-
+// Change password (including first login)
+router.post('/change-password', authenticatePandit, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, isFirstLogin } = req.body;
+    const panditId = req.user.id;
+    
+    const pandit = await Pandit.findById(panditId);
+    
+    if (!pandit) {
+      return res.status(404).json({ success: false, message: 'Pandit not found' });
+    }
+    
+    // For first login, verify the temporary password
+    if (isFirstLogin) {
+      const isValid = await bcrypt.compare(currentPassword, pandit.password);
+      if (!isValid) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Invalid temporary password' 
+        });
+      }
+    }
+    
+    // Hash and save new password
+    const salt = await bcrypt.genSalt(10);
+    pandit.password = await bcrypt.hash(newPassword, salt);
+    pandit.isFirstLogin = false; // Mark as no longer first login
+    await pandit.save();
+    
+    // Generate new token
+    const token = jwt.sign(
+      { id: pandit._id, role: 'pandit', email: pandit.email, name: pandit.name },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    res.json({
+      success: true,
+      message: 'Password changed successfully',
+      token,
+      pandit: {
+        id: pandit._id,
+        name: pandit.name,
+        username: pandit.username,
+        isFirstLogin: false
+      }
+    });
+    
+  } catch (error) {
+    console.error('Password change error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

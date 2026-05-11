@@ -15,7 +15,7 @@ const emailService = require('../utils/emailService');
 router.post('/register', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
-    //console.log('📝 Customer registration attempt:', { email, phone });
+    console.log('📝 Customer registration attempt:', { email, phone });
 
     // ✅ Check for existing phone number
     const existingCustomer = await Customer.findOne({
@@ -44,7 +44,7 @@ router.post('/register', async (req, res) => {
       process.env.JWT_SECRET || 'fallback-secret-for-development',
       { expiresIn: '7d' }
     );
-    //console.log('✅ Customer registered:', customer.email);
+    console.log('✅ Customer registered:', customer.email);
     res.status(201).json({ success: true, token, customer: { id: customer._id, name: customer.name, email: customer.email, phone: customer.phone } });
   } catch (error) {
     // Handle duplicate key error from MongoDB
@@ -140,7 +140,7 @@ router.get('/bookings/:bookingId/verification-code', authenticateCustomer, async
   try {
     const { bookingId } = req.params; // ✅ FIXED: was incorrectly `req.params.id` (undefined)
     const customerId = req.user.id;
-    //console.log('🔐 Verification code request for booking:', bookingId, 'by customer:', customerId);
+    console.log('🔐 Verification code request for booking:', bookingId, 'by customer:', customerId);
     const booking = await Booking.findOne({
       _id: bookingId,
       $or: [{ customerId: customerId }, { email: req.user.email }, { contact: req.user.phone }]
@@ -399,7 +399,7 @@ router.delete('/delete-account', authenticateCustomer, async (req, res) => {
     await Booking.updateMany({ customerId }, { name: 'Deleted User', email: null, contact: null, customerId: null });
     await Review.deleteMany({ customerId });
     await SupportTicket.deleteMany({ customerId });
-    //console.log(`Account deleted: ${customer.email} - Reason: ${reason}`);
+    console.log(`Account deleted: ${customer.email} - Reason: ${reason}`);
     await Customer.findByIdAndDelete(customerId);
     res.json({ success: true, message: 'Account deleted successfully' });
   } catch (error) {

@@ -9,13 +9,13 @@ class NotificationService {
   // Find suitable pandits for a booking
   static async findSuitablePandits(booking) {
     try {
-      //console.log('🔍 Finding suitable pandits for booking:', booking._id);
+      console.log('🔍 Finding suitable pandits for booking:', booking._id);
 
       const Service = require('../models/Service');
       const service = await Service.findById(booking.serviceId);
 
       if (!service) {
-        //console.log('❌ Service not found:', booking.serviceId);
+        console.log('❌ Service not found:', booking.serviceId);
         return [];
       }
 
@@ -29,7 +29,7 @@ class NotificationService {
       }
 
       const suitablePandits = await Pandit.find(query).limit(10);
-      //console.log(`✅ Found ${suitablePandits.length} suitable pandits`);
+      console.log(`✅ Found ${suitablePandits.length} suitable pandits`);
       return suitablePandits;
 
     } catch (error) {
@@ -42,7 +42,7 @@ class NotificationService {
   // Send notifications to pandits
 static async notifyPandits(booking, pandits, io) {
   try {
-    //console.log(`📨 Sending notifications to ${pandits.length} pandits`);
+    console.log(`📨 Sending notifications to ${pandits.length} pandits`);
     
     const notifications = [];
     const expiryTime = new Date();
@@ -74,7 +74,7 @@ static async notifyPandits(booking, pandits, io) {
     
     await booking.save();
     
-    //console.log(`✅ Created ${notifications.length} notifications`);
+    console.log(`✅ Created ${notifications.length} notifications`);
     return notifications;
     
   } catch (error) {
@@ -86,7 +86,7 @@ static async notifyPandits(booking, pandits, io) {
   // ✅ FIXED: Get pandit's notifications with complete booking data
   static async getPanditNotifications(panditId) {
     try {
-      //console.log(`📨 Fetching notifications for pandit: ${panditId}`);
+      console.log(`📨 Fetching notifications for pandit: ${panditId}`);
 
       const now = new Date();
       await Notification.deleteMany({ expiresAt: { $lt: now } });
@@ -112,7 +112,7 @@ static async notifyPandits(booking, pandits, io) {
         .sort({ createdAt: -1 })
         .lean();
 
-      //console.log(`📊 Found ${notifications.length} notifications in database`);
+      console.log(`📊 Found ${notifications.length} notifications in database`);
       // filter out notification when booking is already accepted.
       notifications = notifications.filter(notification => {
         const booking = notification.bookingId;
@@ -121,22 +121,22 @@ static async notifyPandits(booking, pandits, io) {
         // Keep notification only if booking is still pending or notified
         const isValidStatus = ['pending', 'notified'].includes(booking.status);
         if (!isValidStatus) {
-          //console.log(`🗑️ Filtering out notification ${notification._id} - booking status: ${booking.status}`);
+          console.log(`🗑️ Filtering out notification ${notification._id} - booking status: ${booking.status}`);
         }
         return isValidStatus;
       });
-      //console.log(`📊 Found ${notifications.length} valid notifications`);
+      console.log(`📊 Found ${notifications.length} valid notifications`);
 
       // ✅ FIXED: Format notifications with complete data
       const formattedNotifications = notifications.map(notification => {
         const booking = notification.bookingId;
 
         // Log raw data for debugging
-        //console.log(`   Processing notification ${notification._id}:`);
-        //console.log(`      Booking exists: ${!!booking}`);
+        console.log(`   Processing notification ${notification._id}:`);
+        console.log(`      Booking exists: ${!!booking}`);
 
         if (!booking) {
-          //console.log(`      ⚠️ Booking not found for notification`);
+          console.log(`      ⚠️ Booking not found for notification`);
           return {
             _id: notification._id,
             notificationId: notification._id,
@@ -178,11 +178,11 @@ static async notifyPandits(booking, pandits, io) {
           isRead: notification.isRead
         };
 
-        //console.log(`✅ Formatted: ${formattedNotification.customerName} - ${formattedNotification.serviceName}`);
+        console.log(`✅ Formatted: ${formattedNotification.customerName} - ${formattedNotification.serviceName}`);
         return formattedNotification;
       });
 
-      //console.log(`✅ Returning ${formattedNotifications.length} formatted notifications`);
+      console.log(`✅ Returning ${formattedNotifications.length} formatted notifications`);
       return formattedNotifications;
 
     } catch (error) {
@@ -209,7 +209,7 @@ static async notifyPandits(booking, pandits, io) {
   // Send booking confirmation email
   static async sendBookingConfirmation(booking, pandit) {
     try {
-      //console.log(`📧 Sending confirmation email for booking ${booking._id}`);
+      console.log(`📧 Sending confirmation email for booking ${booking._id}`);
       // Implement email sending logic here
       return true;
     } catch (error) {
@@ -249,7 +249,7 @@ static async notifyPandits(booking, pandits, io) {
         message: notification.message
       });
     }
-      //console.log(`✅ Notification sent to pandit ${pandit.name}`);
+      console.log(`✅ Notification sent to pandit ${pandit.name}`);
       return notification;
     } catch (error) {
       console.error('Error sending single pandit notification:', error);
