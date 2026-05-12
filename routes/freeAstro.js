@@ -721,6 +721,13 @@ async function buildKundali(
   const lagnaInfo = signFromLon(lagnaLon);
   const lagnaIdx = lagnaInfo.signIdx;
 
+
+  const {
+    calcMarriageYoga,
+  } = require('../utils/marriageYoga');
+
+
+
   // 6. Build planet objects
   const planets = Object.keys(sid).map(name => {
     const rawLon = sid[name];
@@ -737,15 +744,15 @@ async function buildKundali(
     const combust = (name !== 'Sun' && name !== 'Rahu' && name !== 'Ketu' && COMBUST_LIMITS[name])
       ? isCombust(rawLon, sid.Sun, COMBUST_LIMITS[name])
       : false;
-      console.log({
-  planet: name,
-  longitude: rawLon,
-  signIdx,
-  lagnaIdx,
-  calculatedHouse: house,
-  planetSign: sign,
-  lagnaSign: lagnaInfo.sign,
-});
+    console.log({
+      planet: name,
+      longitude: rawLon,
+      signIdx,
+      lagnaIdx,
+      calculatedHouse: house,
+      planetSign: sign,
+      lagnaSign: lagnaInfo.sign,
+    });
 
     return {
       name,
@@ -815,6 +822,13 @@ async function buildKundali(
 
   // 18. Scores (real calculation)
   const scores = calcScores(planets, houses, lagnaIdx);
+  const marriageYoga = calcMarriageYoga({
+    planets,
+    houses,
+    lagnaIdx,
+    mahadasha: dashaLord,
+    antardasha_list,
+  });
 
   return {
     lagna: lagnaInfo.sign,
@@ -852,6 +866,7 @@ async function buildKundali(
 
     d9_lagna,
     d9_houses,
+    marriage_yoga: marriageYoga,
 
     julian_day: chart.jd,
   };
@@ -941,115 +956,115 @@ async function generateHoroscope(signName) {
       'Take care of health and avoid overexertion.'
     );
   }
-  
-  
+
+
   const star_scores = {
-  overall:
-    sun.house === 10 ? 4.5 : 3.8,
+    overall:
+      sun.house === 10 ? 4.5 : 3.8,
 
-  career:
-    [10,11].includes(sun.house)
-      ? 4.4
-      : 3.5,
+    career:
+      [10, 11].includes(sun.house)
+        ? 4.4
+        : 3.5,
 
-  finance:
-    [2,11].includes(jupiter.house)
-      ? 4.2
-      : 3.2,
+    finance:
+      [2, 11].includes(jupiter.house)
+        ? 4.2
+        : 3.2,
 
-  love:
-    [5,7].includes(venusHouse(positions))
-      ? 4.1
-      : 3.0,
+    love:
+      [5, 7].includes(venusHouse(positions))
+        ? 4.1
+        : 3.0,
 
-  health:
-    [6,8,12].includes(saturn.house)
-      ? 2.8
-      : 4.0,
+    health:
+      [6, 8, 12].includes(saturn.house)
+        ? 2.8
+        : 4.0,
 
-  luck:
-    [9,11].includes(jupiter.house)
-      ? 4.3
-      : 3.4,
-};
+    luck:
+      [9, 11].includes(jupiter.house)
+        ? 4.3
+        : 3.4,
+  };
 
 
-const sections = {
-  love:
-    [5,7].includes(venusHouse(positions))
-      ? 'Romantic energy is favorable today. Emotional understanding improves.'
-      : 'Be patient in relationships and avoid misunderstandings.',
+  const sections = {
+    love:
+      [5, 7].includes(venusHouse(positions))
+        ? 'Romantic energy is favorable today. Emotional understanding improves.'
+        : 'Be patient in relationships and avoid misunderstandings.',
 
-  career:
-    [10,11].includes(sun.house)
-      ? 'Career progress and recognition are strongly supported today.'
-      : 'Focus on discipline and avoid workplace conflicts.',
+    career:
+      [10, 11].includes(sun.house)
+        ? 'Career progress and recognition are strongly supported today.'
+        : 'Focus on discipline and avoid workplace conflicts.',
 
-  finance:
-    [2,11].includes(jupiter.house)
-      ? 'Financial opportunities and gains are indicated.'
-      : 'Avoid unnecessary expenses and risky investments.',
+    finance:
+      [2, 11].includes(jupiter.house)
+        ? 'Financial opportunities and gains are indicated.'
+        : 'Avoid unnecessary expenses and risky investments.',
 
-  health:
-    [6,8,12].includes(saturn.house)
-      ? 'Take care of stress, sleep, and digestion today.'
-      : 'Health remains stable with balanced routines.',
+    health:
+      [6, 8, 12].includes(saturn.house)
+        ? 'Take care of stress, sleep, and digestion today.'
+        : 'Health remains stable with balanced routines.',
 
-  travel:
-    [3,9,12].includes(moon.house)
-      ? 'Travel and movement may bring beneficial experiences.'
-      : 'Prefer stability and avoid unnecessary journeys today.',
-};
-return {
-  sign: signName,
+    travel:
+      [3, 9, 12].includes(moon.house)
+        ? 'Travel and movement may bring beneficial experiences.'
+        : 'Prefer stability and avoid unnecessary journeys today.',
+  };
+  return {
+    sign: signName,
 
-  date: now.toISOString().split('T')[0],
+    date: now.toISOString().split('T')[0],
 
-  tithi: 'Shukla Panchami',
+    tithi: 'Shukla Panchami',
 
-  paksha: 'Shukla',
+    paksha: 'Shukla',
 
-  moon_nakshatra: moon.nakshatra,
+    moon_nakshatra: moon.nakshatra,
 
-  overview:
-    predictions[0] ||
-    'Today brings balanced planetary energies and opportunities for growth.',
+    overview:
+      predictions[0] ||
+      'Today brings balanced planetary energies and opportunities for growth.',
 
-  planet_positions: positions,
+    planet_positions: positions,
 
-  predictions,
+    predictions,
 
-  star_scores,
+    star_scores,
 
-  sections,
+    sections,
 
-  compatible_signs: [
-    'Aries',
-    'Leo',
-    'Sagittarius',
-  ],
+    compatible_signs: [
+      'Aries',
+      'Leo',
+      'Sagittarius',
+    ],
 
-  best_time: '10:30 AM - 12:00 PM',
+    best_time: '10:30 AM - 12:00 PM',
 
-  key_transits: [
-    `Sun transiting ${sun.sign}`,
-    `Moon influencing emotional clarity in ${moon.sign}`,
-    `Jupiter supports wisdom and expansion`,
-    `Saturn encourages discipline and patience`,
-  ],
+    key_transits: [
+      `Sun transiting ${sun.sign}`,
+      `Moon influencing emotional clarity in ${moon.sign}`,
+      `Jupiter supports wisdom and expansion`,
+      `Saturn encourages discipline and patience`,
+    ],
 
-  mantra:
-    'Om Gurave Namaha',
+    mantra:
+      'Om Gurave Namaha',
 
-  lucky_color:
-    getLuckyColor(signName),
+    lucky_color:
+      getLuckyColor(signName),
 
-  lucky_number:
-    getLuckyNumber(signName),
+    lucky_number:
+      getLuckyNumber(signName),
 
-  favorable_direction:
-    getFavorableDirection(signName),
-};
+    favorable_direction:
+      getFavorableDirection(signName),
+  };
 
 }
 // Helper 
